@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Таймер до Нового Года 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117;
+        }
+        #countdown-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            z-index: 10;
+            pointer-events: none;
+            padding-top: 5vh;
+        }
+        canvas {
+            display: block;
+        }
+        #labels-display {
+            position: absolute;
+            top: 50%;
+            transform: translateY(12vh);
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            color: #909090;
+            font-weight: bold;
+            letter-spacing: 0.1em;
+            pointer-events: none;
+        }
+        .label-item {
+            flex: 1;
+            font-size: 0.8rem;
+            line-height: 1;
+        }
+        @media (min-width: 640px) {
+            .label-item {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="countdown-container">
+        <h1 id="main-title" class="text-4xl sm:text-6xl md:text-7xl font-extrabold text-white text-center drop-shadow-lg tracking-wider" style="text-shadow: 0 0 15px #4a90e2, 0 0 30px #4a90e2;">
+            ДО НОВОГО ГОДА 2026
+        </h1>
+        <div id="labels-display">
+            <div class="label-item">ДНИ</div>
+            <div class="label-item">ЧАСЫ</div>
+            <div class="label-item">МИНУТЫ</div>
+            <div class="label-item">СЕКУНДЫ</div>
+        </div>
+    </div>
+
+    <script>
+        const targetDate = new Date('January 1, 2026 00:00:00').getTime();
+
+        let scene, camera, renderer;
+        let starGeometry, starMaterial, stars;
+        let ambientLight, pointLight;
+        let font;
+        let textMeshes = {};
+        let tsypaMesh;
+
+        function init() {
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 10;
+            camera.position.y = 0;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            ambientLight = new THREE.AmbientLight(0x404040, 5);
+            scene.add(ambientLight);
+
+            pointLight = new THREE.PointLight(0xffffff, 50, 100);
+            pointLight.position.set(5, 5, 5);
+            scene.add(pointLight);
+
+            const starVertices = [];
+            for (let i = 0; i < 1000; i++) {
+                const x = (Math.random() - 0.5) * 200;
+                const y = (Math.random() - 0.5) * 200;
+                const z = (Math.random() - 0.5) * 200;
+                starVertices.push(x, y, z);
+            }
+
+            starGeometry = new THREE.BufferGeometry();
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+
+            starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.2 });
+            stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+
+            loadFontAndCreateText();
+
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function createText(text, name, x, color, size = 1, y = 0, isTsypa = false) {
+            if (!font) return;
+            const textGeometry = new THREE.TextGeometry(text, {
+                font: font,
+                size: size,
+                height: 0.2,
+                curveSegments: 12,
+                bevelEnabled: true,
+                bevelThickness: 0.03,
+                bevelSize: 0.02,
+                bevelOffset: 0,
+                bevelSegments: 5
+            });
+            textGeometry.center();
+            const material = new THREE.MeshPhongMaterial({ color: color });
+            const mesh = new THREE.Mesh(textGeometry, material);
+            mesh.position.set(x, y, 0);
+            scene.add(mesh);
+            if (isTsypa) {
+                tsypaMesh = mesh;
+            } else {
+                textMeshes[name] = mesh;
+            }
+            return mesh;
+        }
+
+        function updateText(name, newText) {
+            if (!font || !textMeshes[name]) return;
+
+            const currentMesh = textMeshes[name];
+            const currentSize = currentMesh.geometry.parameters.options.size;
+
+            currentMesh.geometry.dispose();
+
+            const newGeometry = new THREE.TextGeometry(newText, {
+                font: font,
+                size: currentSize,
+                height: 0.2,
+                curveSegments: 12,
+                bevelEnabled: true,
+                bevelThickness: 0.03,
+                bevelSize: 0.02,
+                bevelOffset: 0,
+                bevelSegments: 5
+            });
+            newGeometry.center();
+            currentMesh.geometry = newGeometry;
+        }
+
+        function loadFontAndCreateText() {
+            const fontLoader = new THREE.FontLoader();
+            const fontPath = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/droid/droid_sans_regular.typeface.json'; 
+
+            fontLoader.load(fontPath, (loadedFont) => {
+                font = loadedFont;
+
+                const baseColor = 0x00ffff;
+                const numberSize = 1.8;
+                const yOffset = -0.5;
+
+                createText('00', 'days', -5.0, baseColor, numberSize, yOffset);
+                createText('00', 'hours', -1.5, baseColor, numberSize, yOffset);
+                createText('00', 'minutes', 2.0, baseColor, numberSize, yOffset);
+                createText('00', 'seconds', 5.5, baseColor, numberSize, yOffset);
+
+                createText('ціпа лох', 'tsipa lox', 0, 0x00ff00, 1, -5, true); 
+
+                updateCountdown();
+            }, undefined, (error) => {
+                console.error(error);
+            });
+        }
+
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const distance = targetDate - now;
+
+            const d = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((distance % (1000 * 60)) / 1000);
+
+            const format = (val) => String(val).padStart(2, '0');
+
+            if (distance > 0 && font) {
+                updateText('days', format(d));
+                updateText('hours', format(h));
+                updateText('minutes', format(m));
+                updateText('seconds', format(s));
+            } else if (distance <= 0) {
+                document.getElementById('countdown-container').innerHTML = `
+                    <h1 class="text-6xl sm:text-8xl md:text-9xl font-extrabold text-yellow-400 text-center animate-pulse tracking-widest" style="text-shadow: 0 0 20px #ff0, 0 0 40px #f00;">
+                        С НОВЫМ ГОДОМ 2026!
+                    </h1>
+                `;
+                document.getElementById('labels-display').style.display = 'none';
+
+                Object.keys(textMeshes).forEach(key => scene.remove(textMeshes[key]));
+                if (tsypaMesh) scene.remove(tsypaMesh); 
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            stars.rotation.x += 0.0001;
+            stars.rotation.y += 0.0005;
+
+            if (tsypaMesh) {
+                tsypaMesh.rotation.y += 0.005; 
+            }
+
+            updateCountdown();
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = function () {
+            init();
+            animate();
+        };
+    </script>
+</body>
+</html>
